@@ -1,0 +1,84 @@
+{
+  "info": {
+    "_postman_id": "8de2e4d7-48cd-4f59-84aa-beb239b596ba",
+    "name": "VWAJEN API v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"username\": \"test_user\",\n  \"email\": \"test@example.com\",\n  \"password\": \"Password@123\",\n  \"password_confirmation\": \"Password@123\"\n}"
+        },
+        "url": "{{base_url}}/auth/register"
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@vwajen.com\",\n  \"password\": \"Admin@12345\"\n}"
+        },
+        "url": "{{base_url}}/auth/login"
+      }
+    },
+    {
+      "name": "List Courses",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/courses"
+      }
+    },
+    {
+      "name": "List Feed",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/feed"
+      }
+    },
+    {
+      "name": "List Events",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/events"
+      }
+    },
+    {
+      "name": "List Civic Actions",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/actions"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:9000/api/v1"
+    }
+  ]
+}
