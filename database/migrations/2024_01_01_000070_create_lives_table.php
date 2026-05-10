@@ -37,7 +37,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('live_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('joined_at');
+            $table->timestamp('joined_at')->nullable();
             $table->timestamp('left_at')->nullable();
             $table->timestamps();
         });

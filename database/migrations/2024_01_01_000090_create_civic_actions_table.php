@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('location');
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
-            $table->timestamp('action_date');
+            $table->timestamp('action_date')->nullable();
             $table->integer('participants_needed')->nullable();
             $table->integer('participants_count')->default(0);
             $table->boolean('is_featured')->default(false);

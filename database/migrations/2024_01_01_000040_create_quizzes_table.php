@@ -47,7 +47,7 @@ return new class extends Migration
             $table->integer('score')->default(0);
             $table->integer('max_score')->default(0);
             $table->boolean('is_passed')->default(false);
-            $table->timestamp('started_at');
+            $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
         });
@@ -59,7 +59,7 @@ return new class extends Migration
             $table->foreignId('course_id')->constrained()->cascadeOnDelete();
             $table->string('certificate_number')->unique();
             $table->string('certificate_url')->nullable();
-            $table->timestamp('issued_at');
+            $table->timestamp('issued_at')->nullable();
             $table->timestamps();
             $table->unique(['user_id', 'course_id']);
         });

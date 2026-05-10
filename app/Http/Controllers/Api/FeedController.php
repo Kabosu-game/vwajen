@@ -104,6 +104,13 @@ class FeedController extends Controller
         return $this->success($comment->load('user:id,name,username,avatar'), 'Commentaire ajouté', 201);
     }
 
+    public function share(Request $request, int $id)
+    {
+        $video = Video::published()->findOrFail($id);
+        $video->increment('shares_count');
+        return $this->success(['shares_count' => $video->shares_count]);
+    }
+
     public function comments(Request $request, int $id)
     {
         $video = Video::published()->findOrFail($id);

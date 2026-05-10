@@ -7,6 +7,7 @@ use App\Models\Vote;
 use App\Models\VoteOption;
 use App\Models\UserVote;
 use App\Models\EngagementPoint;
+use App\Notifications\VoteResultsNotification;
 use Illuminate\Http\Request;
 
 class VoteController extends Controller
@@ -60,19 +61,26 @@ class VoteController extends Controller
 
         $option->increment('votes_count');
 
-        // Recalculate percentages
+        // Recalculate percentages — reload options to get fresh votes_count after increment
         $totalVotes = UserVote::where('vote_id', $id)->count();
-        $vote->options->each(function($opt) use ($totalVotes) {
-            $opt->update(['percentage' => $totalVotes > 0 ? round(($opt->votes_count / $totalVotes) * 100, 1) : 0]);
-        });
+        $vote->load('options');
+        $vote->options->each(fn($opt) => $opt->update([
+            'percentage' => $totalVotes > 0 ? round(($opt->votes_count / $totalVotes) * 100, 1) : 0,
+        ]));
 
         EngagementPoint::create([
-            'user_id' => $user->id,
-            'type'    => 'vote_cast',
-            'points'  => 10,
+            'user_id'        => $user->id,
+            'action'         => 'vote_cast',
+            'points'         => 10,
             'pointable_type' => Vote::class,
             'pointable_id'   => $id,
         ]);
+
+        if ($vote->end_date !== null && $vote->end_date->isPast()) {
+            dispatch(fn() => $vote->userVotes()->with('user')->cursor()->each(
+                fn($uv) => $uv->user->notify(new VoteResultsNotification($vote))
+            ));
+        }
 
         return $this->success(['message' => 'Vwa ou anrejistre!']);
     }

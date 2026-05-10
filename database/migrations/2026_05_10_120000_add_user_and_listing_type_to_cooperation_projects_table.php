@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('cooperation_projects', function (Blueprint $table) {
+            $table->foreignId('user_id')->nullable()->after('id')->constrained()->nullOnDelete();
+            $table->string('listing_type', 32)->default('collaboration')->after('sector');
+            $table->index(['listing_type', 'is_published']);
+            $table->index('user_id');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('cooperation_projects', function (Blueprint $table) {
+            $table->dropIndex(['listing_type', 'is_published']);
+            $table->dropIndex(['user_id']);
+            $table->dropConstrainedForeignId('user_id');
+            $table->dropColumn('listing_type');
+        });
+    }
+};

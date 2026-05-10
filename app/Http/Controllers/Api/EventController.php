@@ -12,11 +12,13 @@ class EventController extends Controller
 {
     public function index(Request $request)
     {
-        $events = Event::upcoming()
+        $events = Event::query()
+            ->visibleOnApp()
             ->with(['creator:id,name,username,avatar', 'category:id,name,color'])
-            ->when($request->type, fn($q) => $q->where('type', $request->type))
-            ->when($request->search, fn($q) => $q->where('title', 'like', '%'.$request->search.'%'))
-            ->orderBy('start_date')
+            ->when($request->type, fn ($q) => $q->where('type', $request->type))
+            ->when($request->search, fn ($q) => $q->where('title', 'like', '%'.$request->search.'%'))
+            ->orderByRaw('COALESCE(start_date, end_date) asc')
+            ->orderBy('id')
             ->paginate(12);
 
         return $this->paginated($events);

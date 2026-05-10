@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Comment;
 use App\Models\Project;
 use App\Models\EngagementPoint;
 use Illuminate\Http\Request;
@@ -78,13 +79,48 @@ class ProjectController extends Controller
         $project->increment('supports_count');
 
         EngagementPoint::create([
-            'user_id' => $user->id,
-            'type'    => 'project_supported',
-            'points'  => 5,
+            'user_id'        => $user->id,
+            'action'         => 'project_supported',
+            'points'         => 5,
             'pointable_type' => Project::class,
             'pointable_id'   => $id,
         ]);
 
         return $this->success(['supported' => true]);
+    }
+
+    public function getComments(Request $request, int $id)
+    {
+        $project = Project::published()->findOrFail($id);
+
+        $comments = $project->comments()
+            ->whereNull('parent_id')
+            ->where('status', 'visible')
+            ->with(['user:id,name,username,avatar,is_verified', 'replies.user:id,name,username,avatar'])
+            ->latest()
+            ->paginate(20);
+
+        return $this->paginated($comments, 'Commentaires');
+    }
+
+    public function addComment(Request $request, int $id)
+    {
+        $project = Project::published()->findOrFail($id);
+        $data = $request->validate([
+            'content'   => 'required|string|max:500',
+            'parent_id' => 'nullable|exists:comments,id',
+        ]);
+
+        $comment = Comment::create([
+            'user_id'          => $request->user()->id,
+            'commentable_type' => Project::class,
+            'commentable_id'   => $id,
+            'content'          => $data['content'],
+            'parent_id'        => $data['parent_id'] ?? null,
+        ]);
+
+        $project->increment('comments_count');
+
+        return $this->success($comment->load('user:id,name,username,avatar'), 201);
     }
 }

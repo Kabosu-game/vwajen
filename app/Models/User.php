@@ -74,6 +74,21 @@ class User extends Authenticatable implements FilamentUser
             ->withPivot(['role', 'status'])->withTimestamps();
     }
 
+    public function posts() { return $this->hasMany(Post::class); }
+
+    public function likedPosts() {
+        return $this->belongsToMany(Post::class, 'post_likes')->withTimestamps();
+    }
+
+    public function projects() { return $this->hasMany(Project::class, 'creator_id'); }
+
+    public function supportedProjects() {
+        return $this->belongsToMany(Project::class, 'project_supports')->withTimestamps();
+    }
+
+    public function votes() { return $this->hasMany(Vote::class, 'created_by'); }
+    public function userVotes() { return $this->hasMany(UserVote::class); }
+
     // Accesseurs
     public function getAvatarUrlAttribute(): string {
         return $this->avatar ? asset('storage/'.$this->avatar) : asset('images/default-avatar.png');

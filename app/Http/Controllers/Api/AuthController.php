@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EngagementPoint;
 use App\Models\User;
 use App\Models\Membership;
+use App\Notifications\NewFollowerNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -69,7 +72,10 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        $user = $request->user()->load('membership', 'badges', 'certifications');
+        $user = $request->user()
+            ->loadCount(['followers', 'following', 'posts', 'videos as published_videos_count' => fn($q) => $q->where('status', 'published')])
+            ->load('membership', 'badges', 'certifications');
+
         return $this->success($this->formatUser($user));
     }
 
@@ -116,48 +122,138 @@ class AuthController extends Controller
         $user = User::where('username', $username)
             ->where('status', 'active')
             ->with(['badges', 'membership'])
+            ->withCount([
+                'followers',
+                'following',
+                'videos as videos_count' => fn($q) => $q->where('status', 'published'),
+            ])
             ->firstOrFail();
 
         return $this->success([
-            'id' => $user->id,
-            'name' => $user->name,
-            'username' => $user->username,
-            'avatar_url' => $user->avatar_url,
-            'bio' => $user->bio,
-            'location' => $user->location,
-            'is_verified' => $user->is_verified,
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'username'         => $user->username,
+            'avatar_url'       => $user->avatar_url,
+            'bio'              => $user->bio,
+            'location'         => $user->location,
+            'is_verified'      => $user->is_verified,
             'engagement_level' => $user->engagement_level,
-            'badges' => $user->badges,
-            'membership_type' => $user->membership?->type,
-            'followers_count' => $user->followers()->count(),
-            'following_count' => $user->following()->count(),
-            'videos_count' => $user->videos()->where('status', 'published')->count(),
+            'badges'           => $user->badges,
+            'membership_type'  => $user->membership?->type,
+            'followers_count'  => $user->followers_count,
+            'following_count'  => $user->following_count,
+            'videos_count'     => $user->videos_count,
         ]);
+    }
+
+    public function uploadAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $user = $request->user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return $this->success(['avatar_url' => $user->avatar_url], 'Avatar mis à jour');
+    }
+
+    public function follow(Request $request, string $username)
+    {
+        $target = User::where('username', $username)->where('status', 'active')->firstOrFail();
+        $user = $request->user();
+
+        if ($target->id === $user->id) {
+            return $this->error('Ou pa ka suiv tèt ou', 422);
+        }
+
+        $isFollowing = $user->following()->where('users.id', $target->id)->exists();
+
+        if ($isFollowing) {
+            $user->following()->detach($target->id);
+            $isFollowing = false;
+        } else {
+            $user->following()->attach($target->id);
+            $target->notify(new NewFollowerNotification($user));
+            $isFollowing = true;
+        }
+
+        return $this->success([
+            'following'       => $isFollowing,
+            'followers_count' => $target->followers()->count(),
+        ]);
+    }
+
+    public function getFollowers(Request $request, string $username)
+    {
+        return $this->paginateFollowRelation($username, 'followers', 'Abonnés');
+    }
+
+    public function getFollowing(Request $request, string $username)
+    {
+        return $this->paginateFollowRelation($username, 'following', 'Abonnements');
+    }
+
+    private function paginateFollowRelation(string $username, string $relation, string $label)
+    {
+        $target = User::where('username', $username)->firstOrFail();
+        $results = $target->{$relation}()
+            ->select('users.id', 'users.name', 'users.username', 'users.avatar', 'users.is_verified')
+            ->paginate(20);
+
+        return $this->paginated($results, $label);
+    }
+
+    public function searchUsers(Request $request)
+    {
+        $q = $request->validate(['q' => 'required|string|min:2|max:100'])['q'];
+
+        $users = User::where('status', 'active')
+            ->where(fn($query) => $query
+                ->where('name', 'like', "%$q%")
+                ->orWhere('username', 'like', "%$q%")
+            )
+            ->select('id', 'name', 'username', 'avatar', 'is_verified', 'engagement_level')
+            ->limit(20)
+            ->get()
+            ->map(fn($u) => [...$u->toArray(), 'avatar_url' => $u->avatar_url]);
+
+        return $this->success($users, 'Résultats de recherche');
     }
 
     private function formatUser(User $user): array
     {
         return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'username' => $user->username,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'avatar_url' => $user->avatar_url,
-            'bio' => $user->bio,
-            'location' => $user->location,
-            'birth_date' => $user->birth_date,
-            'gender' => $user->gender,
-            'status' => $user->status,
-            'is_verified' => $user->is_verified,
-            'is_admin' => $user->is_admin,
-            'engagement_level' => $user->engagement_level,
-            'gjka_member_id' => $user->gjka_member_id,
-            'gjka_member_since' => $user->gjka_member_since,
-            'membership' => $user->relationLoaded('membership') ? $user->membership : null,
-            'badges' => $user->relationLoaded('badges') ? $user->badges : null,
-            'total_points' => $user->total_points,
-            'created_at' => $user->created_at,
+            'id'                     => $user->id,
+            'name'                   => $user->name,
+            'username'               => $user->username,
+            'email'                  => $user->email,
+            'phone'                  => $user->phone,
+            'avatar_url'             => $user->avatar_url,
+            'bio'                    => $user->bio,
+            'location'               => $user->location,
+            'birth_date'             => $user->birth_date,
+            'gender'                 => $user->gender,
+            'status'                 => $user->status,
+            'is_verified'            => $user->is_verified,
+            'is_admin'               => $user->is_admin,
+            'engagement_level'       => $user->engagement_level,
+            'gjka_member_id'         => $user->gjka_member_id,
+            'gjka_member_since'      => $user->gjka_member_since,
+            'membership'             => $user->relationLoaded('membership') ? $user->membership : null,
+            'badges'                 => $user->relationLoaded('badges') ? $user->badges : null,
+            'total_points'           => $user->total_points,
+            'followers_count'        => $user->followers_count ?? 0,
+            'following_count'        => $user->following_count ?? 0,
+            'posts_count'            => $user->posts_count ?? 0,
+            'published_videos_count' => $user->published_videos_count ?? 0,
+            'created_at'             => $user->created_at,
         ];
     }
 }

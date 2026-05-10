@@ -17,15 +17,6 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Followers (abonnements entre utilisateurs)
-        Schema::create('followers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('follower_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('following_id')->constrained('users')->cascadeOnDelete();
-            $table->timestamps();
-            $table->unique(['follower_id', 'following_id']);
-        });
-
         // Bibliothèque de contenu - Enregistrements sauvegardés
         Schema::create('saved_contents', function (Blueprint $table) {
             $table->id();
@@ -39,7 +30,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('saved_contents');
-        Schema::dropIfExists('followers');
         Schema::dropIfExists('notifications');
     }
 };

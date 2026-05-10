@@ -22,8 +22,8 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
-            $table->timestamp('start_date');
-            $table->timestamp('end_date');
+            $table->timestamp('start_date')->nullable();
+            $table->timestamp('end_date')->nullable();
             $table->integer('max_participants')->nullable();
             $table->integer('participants_count')->default(0);
             $table->boolean('is_free')->default(true);

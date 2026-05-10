@@ -29,6 +29,11 @@ class Live extends Model
     public function reports() { return $this->morphMany(Report::class, 'reportable'); }
     public function savedBy() { return $this->morphMany(SavedContent::class, 'saveable'); }
 
+    public function guestInvitations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(LiveGuestInvitation::class);
+    }
+
     public function scopeLive($query) { return $query->where('status', 'live'); }
     public function scopeScheduled($query) { return $query->where('status', 'scheduled'); }
 }

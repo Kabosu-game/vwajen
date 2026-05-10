@@ -6,7 +6,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
+use App\Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -24,10 +24,30 @@ class FilamentServiceProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            // Racine du site : http://localhost:8000/ (connexion si non auth : /login)
             ->login()
             ->colors([
                 'primary' => Color::Amber,
+            ])
+            /*
+             * Tout afficher : sans replis par section, avec un ordre de groupes fixe.
+             * Les libellés doivent correspondre exactement à `$navigationGroup` sur chaque ressource.
+             */
+            ->collapsibleNavigationGroups(false)
+            ->navigationGroups([
+                'Musée des révolutionnaires',
+                'Communication',
+                'Contenu',
+                'Contenu citoyen',
+                'Lives',
+                'Éducation',
+                'Mobilisation',
+                'Démocratie participative',
+                'Coopération & intégrité',
+                'Adhésion & engagement',
+                'Modération',
+                'Communauté',
+                'Administration',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')

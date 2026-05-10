@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Answer;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\LessonProgress;
 use App\Models\Certification;
+use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\EngagementPoint;
 use Illuminate\Http\Request;
@@ -198,6 +200,119 @@ class CourseController extends Controller
             ->paginate(10);
 
         return $this->paginated($enrollments);
+    }
+
+    // ── Quiz ──────────────────────────────────────────────────────────────────
+
+    public function getQuiz(Request $request, int $courseId)
+    {
+        $course = Course::where('is_published', true)->findOrFail($courseId);
+        $isEnrolled = $request->user() && CourseEnrollment::where(['user_id' => $request->user()->id, 'course_id' => $courseId])->exists();
+
+        if (!$isEnrolled && !$course->is_free) {
+            return $this->error('Inscription requise', 403);
+        }
+
+        $quiz = $course->quizzes()->where('is_active', true)->with('questions.answers')->first();
+
+        if (!$quiz) {
+            return $this->error('Pa gen quiz pou kou sa a', 404);
+        }
+
+        $attempt = $request->user()
+            ? QuizAttempt::where(['user_id' => $request->user()->id, 'quiz_id' => $quiz->id])
+                ->whereNotNull('completed_at')->latest()->first()
+            : null;
+
+        return $this->success([
+            'quiz' => [
+                'id'                 => $quiz->id,
+                'title'              => $quiz->title,
+                'description'        => $quiz->description,
+                'pass_score'         => $quiz->pass_score,
+                'time_limit_minutes' => $quiz->time_limit_minutes,
+                'questions_count'    => $quiz->questions->count(),
+                'questions'          => $quiz->questions->map(fn($q) => [
+                    'id'      => $q->id,
+                    'text'    => $q->question,
+                    'type'    => $q->type,
+                    'points'  => $q->points,
+                    'answers' => $q->answers->map(fn($a) => ['id' => $a->id, 'text' => $a->answer])->values(),
+                ])->values(),
+            ],
+            'previous_attempt' => $attempt ? [
+                'score'     => $attempt->score,
+                'max_score' => $attempt->max_score,
+                'is_passed' => $attempt->is_passed,
+                'completed_at' => $attempt->completed_at?->toISOString(),
+            ] : null,
+        ]);
+    }
+
+    public function submitQuiz(Request $request, int $courseId)
+    {
+        $validated = $request->validate([
+            'quiz_id' => 'required|integer|exists:quizzes,id',
+            'answers' => 'required|array|min:1',
+            'answers.*.question_id' => 'required|integer|exists:questions,id',
+            'answers.*.answer_id'   => 'required|integer|exists:answers,id',
+        ]);
+
+        $user = $request->user();
+        $quiz = Quiz::with('questions.answers')->findOrFail($validated['quiz_id']);
+
+        if ($quiz->course_id !== $courseId) {
+            return $this->error('Quiz invalide pour ce cours', 422);
+        }
+
+        // Calculer le score
+        $score = 0;
+        $maxScore = 0;
+
+        foreach ($quiz->questions as $question) {
+            $maxScore += $question->points;
+            $userAnswer = collect($validated['answers'])->firstWhere('question_id', $question->id);
+            if ($userAnswer) {
+                $correctAnswer = $question->answers->firstWhere('id', $userAnswer['answer_id']);
+                if ($correctAnswer && $correctAnswer->is_correct) {
+                    $score += $question->points;
+                }
+            }
+        }
+
+        $scorePercent = $maxScore > 0 ? round(($score / $maxScore) * 100) : 0;
+        $isPassed = $scorePercent >= $quiz->pass_score;
+
+        $attempt = QuizAttempt::create([
+            'user_id'      => $user->id,
+            'quiz_id'      => $quiz->id,
+            'score'        => $scorePercent,
+            'max_score'    => 100,
+            'is_passed'    => $isPassed,
+            'started_at'   => now()->subMinutes(5),
+            'completed_at' => now(),
+        ]);
+
+        if ($isPassed) {
+            $course = Course::find($courseId);
+            $this->issueCertification($user, $course);
+
+            EngagementPoint::create([
+                'user_id'        => $user->id,
+                'points'         => 20,
+                'action'         => 'quiz_passed',
+                'pointable_type' => Quiz::class,
+                'pointable_id'   => $quiz->id,
+                'description'    => 'Quiz réussi: ' . $quiz->title,
+            ]);
+        }
+
+        return $this->success([
+            'score'      => $scorePercent,
+            'is_passed'  => $isPassed,
+            'pass_score' => $quiz->pass_score,
+            'points_earned' => $isPassed ? 20 : 0,
+        ], $isPassed ? 'Felisitasyon! Ou pase egzamen an!' : 'Pa pase. Eseye ankò.');
     }
 
     private function issueCertification(object $user, Course $course): void
