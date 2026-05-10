@@ -22,6 +22,27 @@ class VoteResource extends Resource
         return $form->schema([
             Forms\Components\TextInput::make('title')->required()->columnSpanFull(),
             Forms\Components\Textarea::make('description')->rows(3)->columnSpanFull(),
+            Forms\Components\Repeater::make('gallery')
+                ->label('Galerie (illimitée : images, vidéos, audios)')
+                ->schema([
+                    Forms\Components\Select::make('type')
+                        ->options([
+                            'image' => 'Image',
+                            'video' => 'Vidéo',
+                            'audio' => 'Audio',
+                        ])
+                        ->required()
+                        ->native(false),
+                    Forms\Components\TextInput::make('url')
+                        ->label('URL du média')
+                        ->required()
+                        ->maxLength(2000),
+                ])
+                ->columns(2)
+                ->collapsible()
+                ->columnSpanFull()
+                ->defaultItems(0),
+
             Forms\Components\Select::make('status')
                 ->options(['draft' => 'Brouillon', 'active' => 'Actif', 'closed' => 'Clôturé'])
                 ->required()->columnSpan(1),

@@ -14,13 +14,14 @@ class Event extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'created_by', 'category_id', 'title', 'slug', 'description',
+        'created_by', 'category_id', 'title', 'slug', 'description', 'gallery',
         'thumbnail', 'type', 'status', 'location', 'latitude', 'longitude',
         'start_date', 'end_date', 'max_participants', 'participants_count',
         'is_free', 'is_featured',
     ];
 
     protected $casts = [
+        'gallery' => 'array',
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_free' => 'boolean',

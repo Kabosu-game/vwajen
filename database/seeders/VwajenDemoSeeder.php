@@ -155,6 +155,10 @@ class VwajenDemoSeeder extends Seeder
                 'category_id' => $catEvent->id,
                 'title' => 'Forum citoyen PAP 2026',
                 'description' => 'Rencontre de coordination nationale des cellules locales.',
+                'gallery' => [
+                    ['type' => 'image', 'url' => 'https://images.unsplash.com/photo-1540575467063-027a694d6aaf?w=900'],
+                    ['type' => 'video', 'url' => 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'],
+                ],
                 'type' => 'national',
                 'status' => 'published',
                 'location' => 'Port-au-Prince',
@@ -213,6 +217,10 @@ class VwajenDemoSeeder extends Seeder
             [
                 'created_by' => $admin->id,
                 'description' => 'Consultation interne — données de démonstration.',
+                'gallery' => [
+                    ['type' => 'image', 'url' => 'https://images.unsplash.com/photo-1529107386315-e8a9867eab60?w=900'],
+                    ['type' => 'audio', 'url' => 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'],
+                ],
                 'status' => 'active',
                 'is_published' => true,
                 'is_anonymous' => false,

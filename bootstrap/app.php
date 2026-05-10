@@ -1,8 +1,11 @@
 <?php
 
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 spl_autoload_register(static function (string $class): void {
     $prefixes = [
@@ -45,5 +48,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (QueryException $e, Request $request) {
+            if (! $request->is('api/*') && ! $request->expectsJson()) {
+                return null;
+            }
+
+            Log::error('api.query_exception', [
+                'path' => $request->path(),
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'sql_state' => $e->errorInfo[0] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur technique est survenue. Réessayez dans un instant.',
+            ], 500);
+        });
     })->create();

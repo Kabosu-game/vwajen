@@ -45,7 +45,7 @@ class EventController extends Controller
             return $this->error('L\'événement est complet', 422);
         }
 
-        $participation = \App\Models\EventParticipation::firstOrCreate(
+        $participation = EventParticipation::firstOrCreate(
             ['user_id' => $user->id, 'event_id' => $id],
             ['status' => 'registered']
         );
@@ -70,7 +70,7 @@ class EventController extends Controller
 
     public function cancelParticipation(Request $request, int $id)
     {
-        $participation = \App\Models\EventParticipation::where([
+        $participation = EventParticipation::where([
             'user_id' => $request->user()->id,
             'event_id' => $id,
         ])->firstOrFail();
