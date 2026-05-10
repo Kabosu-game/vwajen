@@ -5,15 +5,23 @@ namespace Database\Seeders;
 use App\Models\Advertisement;
 use App\Models\Category;
 use App\Models\CivicAction;
+use App\Models\CooperationProject;
+use App\Models\CorruptionReport;
 use App\Models\Course;
 use App\Models\Event;
 use App\Models\Lesson;
 use App\Models\Live;
 use App\Models\Membership;
+use App\Models\MuseumCategory;
+use App\Models\MuseumEntry;
+use App\Models\Post;
+use App\Models\Project;
 use App\Models\Quiz;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\Video;
+use App\Models\Vote;
+use App\Models\VoteOption;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -173,6 +181,114 @@ class VwajenDemoSeeder extends Seeder
             ]
         );
 
+        CooperationProject::updateOrCreate(
+            ['title' => 'Partenariat tech Sénégal – Haïti'],
+            [
+                'user_id' => $admin->id,
+                'description' => 'Mise en réseau de jeunes développeurs et échanges de bonnes pratiques.',
+                'countries' => 'Sénégal, Haïti',
+                'sector' => 'technologie',
+                'listing_type' => 'collaboration',
+                'contact_email' => 'contact@vwajen.com',
+                'organization' => 'VwaJèn / GJKA',
+                'is_published' => true,
+            ]
+        );
+
+        CooperationProject::updateOrCreate(
+            ['title' => 'Recherche formateurs en éducation civique'],
+            [
+                'user_id' => $member->id,
+                'description' => 'Besoin de volontaires pour animer des ateliers dans les communes.',
+                'countries' => 'Haïti',
+                'sector' => 'education',
+                'listing_type' => 'job',
+                'organization' => 'Cellule Delmas',
+                'is_published' => true,
+            ]
+        );
+
+        $vote = Vote::updateOrCreate(
+            ['title' => 'Priorité nationale pour les 12 prochains mois'],
+            [
+                'created_by' => $admin->id,
+                'description' => 'Consultation interne — données de démonstration.',
+                'status' => 'active',
+                'is_published' => true,
+                'is_anonymous' => false,
+                'start_date' => now()->subDay(),
+                'end_date' => now()->addMonth(),
+                'total_votes_count' => 32,
+            ]
+        );
+
+        VoteOption::updateOrCreate(
+            ['vote_id' => $vote->id, 'order' => 1],
+            ['label' => 'Éducation & jeunesse', 'description' => null, 'votes_count' => 14, 'percentage' => 43.75, 'order' => 1]
+        );
+        VoteOption::updateOrCreate(
+            ['vote_id' => $vote->id, 'order' => 2],
+            ['label' => 'Sécurité alimentaire', 'description' => null, 'votes_count' => 10, 'percentage' => 31.25, 'order' => 2]
+        );
+        VoteOption::updateOrCreate(
+            ['vote_id' => $vote->id, 'order' => 3],
+            ['label' => 'Environnement & climat', 'description' => null, 'votes_count' => 8, 'percentage' => 25.00, 'order' => 3]
+        );
+
+        Project::updateOrCreate(
+            ['title' => 'Bibliothèque mobile — quartier Nord'],
+            [
+                'creator_id' => $member->id,
+                'description' => 'Accès gratuit à des livres et ateliers de lecture pour les enfants.',
+                'is_published' => true,
+                'is_featured' => true,
+                'supports_count' => 12,
+                'comments_count' => 2,
+                'category' => 'educatif',
+                'status' => 'published',
+            ]
+        );
+
+        Post::updateOrCreate(
+            ['user_id' => $member->id, 'text' => 'Première publication démo — ansanm nou pi fò! #VwaJèn'],
+            [
+                'type' => 'text',
+                'is_published' => true,
+                'likes_count' => 8,
+                'comments_count' => 1,
+            ]
+        );
+
+        $museumCat = MuseumCategory::updateOrCreate(
+            ['slug' => 'leaders-revolutionnaires'],
+            ['name' => 'Leaders révolutionnaires haïtiens', 'sort_order' => 1, 'is_active' => true]
+        );
+
+        MuseumEntry::updateOrCreate(
+            ['slug' => 'toussaint-louverture-demo'],
+            [
+                'museum_category_id' => $museumCat->id,
+                'name' => 'Toussaint Louverture',
+                'description' => 'Figure de l’indépendance haïtienne — entrée de démonstration pour le Musée.',
+                'is_featured' => true,
+                'is_published' => true,
+                'views_count' => 240,
+            ]
+        );
+
+        CorruptionReport::firstOrCreate(
+            ['title' => 'Signalement démo — interface (données fictives)'],
+            [
+                'anonymous_token' => Str::random(64),
+                'category' => 'niveau_local_communal',
+                'description' => 'Description fictive pour tester les écrans. Aucune accusation réelle.',
+                'documents' => null,
+                'location' => 'Département de l’Ouest',
+                'period' => '2025',
+                'status' => 'pending',
+            ]
+        );
+
         Membership::updateOrCreate(
             ['user_id' => $member->id],
             [
@@ -200,17 +316,22 @@ class VwajenDemoSeeder extends Seeder
             ]
         );
 
-        Report::firstOrCreate([
-            'reporter_id' => $member->id,
-            'reportable_type' => Video::class,
-            'reportable_id' => Video::query()->value('id'),
-            'reason' => 'desinformation',
-            'status' => 'pending',
-        ]);
+        $demoVideo = Video::query()->first();
+        if ($demoVideo !== null) {
+            Report::firstOrCreate(
+                [
+                    'reporter_id' => $member->id,
+                    'reportable_type' => Video::class,
+                    'reportable_id' => $demoVideo->id,
+                    'reason' => 'desinformation',
+                ],
+                ['status' => 'pending']
+            );
+        }
 
-        $this->command->info('VWAJEN demo seed terminé.');
-        $this->command->info('Super admin: admin@vwajen.com / Admin@12345');
-        $this->command->info('Membre demo: membre@vwajen.com / Member@12345');
-        $this->command->info('Publicité active: '.$ad->title);
+        $this->command->info('VwaJèn — seed démo terminé.');
+        $this->command->info('Comptes : admin@vwajen.com / Admin@12345 | membre@vwajen.com / Member@12345');
+        $this->command->info('Contenu démo : coopération, vote, projet, post, musée, signalement, publicité : '.$ad->title);
+        $this->command->info('Base locale : php artisan migrate:fresh --seed');
     }
 }
